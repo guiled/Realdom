@@ -59,6 +59,11 @@ class Regex extends Realdom
     const NAME = 'regex';
 
     /**
+     * Number of tries to sample a value that is not discredited
+     */
+    const MAX_NB_TRIES = 5;
+
+    /**
      * Realistic domain defined arguments.
      *
      * @var array
@@ -88,6 +93,12 @@ class Regex extends Realdom
      */
     protected $_ast             = null;
 
+    /**
+     * Discredited values
+     *
+     * @var array
+     */
+    protected $_discredited = [];
 
 
     /**
@@ -119,6 +130,19 @@ class Regex extends Realdom
     }
 
     /**
+     * Discredit a value
+     *
+     * @param string $value
+     * @return \Hoa\Realdom
+     */
+    public function discredit($value)
+    {
+        $this->_discredited[] = $value;
+
+        return $this;
+    }
+
+    /**
      * Predicate whether the sampled value belongs to the realistic domains.
      *
      * @param   mixed  $q    Sampled value.
@@ -141,6 +165,15 @@ class Regex extends Realdom
             self::$_visitor = new HoaRegex\Visitor\Isotropic($sampler);
         }
 
-        return self::$_visitor->visit($this->_ast);
+        $nbTries = 0;
+        do {
+            $result = self::$_visitor->visit($this->_ast);
+        } while (in_array($result, $this->_discredited) && $nbTries++ < self::MAX_NB_TRIES);
+
+        if ($nbTries >= self::MAX_NB_TRIES) {
+            throw new Exception('Unable to sample a string from regex that is not discredited.');
+        }
+
+        return $result;
     }
 }
